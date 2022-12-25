@@ -50,7 +50,6 @@ func TestCreateExpense(t *testing.T) {
 	assert.Equal(t, 350.00, detailExp.Amount)
 	assert.Equal(t, "dinner with friend at friday night", detailExp.Note)
 	assert.Equal(t, detailTags, detailExp.Tags)
-
 }
 
 func seedExpense(t *testing.T) Expense {

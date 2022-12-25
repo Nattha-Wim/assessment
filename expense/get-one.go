@@ -17,9 +17,7 @@ func GetExpenseById(c echo.Context) error {
 
 	res := stmt.QueryRow(id)
 	detailExp := Expense{}
-
 	err = res.Scan(&detailExp.Id, &detailExp.Title, &detailExp.Amount, &detailExp.Note, pq.Array(&detailExp.Tags))
-
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, Err{Message: "can't sacan user: " + err.Error()})
 	}
