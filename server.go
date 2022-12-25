@@ -24,6 +24,8 @@ func main() {
 		return false, nil
 	}))
 
+	e.POST("/expenses", expense.CreateExpense)
+
 	log.Println("server start at :2565")
 	log.Fatal(e.Start(":2565"))
 	log.Println("bye bye")
