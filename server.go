@@ -25,6 +25,7 @@ func main() {
 	}))
 
 	e.POST("/expenses", expense.CreateExpense)
+
 	e.GET("/expenses/:id", expense.GetExpenseById)
 
 	log.Println("server start at :2565")
