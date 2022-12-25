@@ -6,11 +6,29 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestGetExpenseById(t *testing.T) {
+	c := seedExpense(t)
+	var latest Expense
+	res := request(http.MethodGet, uri("expenses", strconv.Itoa(c.Id)), nil)
+	err := res.Decode(&latest)
+
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	assert.Equal(t, c.Id, latest.Id)
+	assert.NotEmpty(t, latest.Title)
+	assert.NotEmpty(t, latest.Amount)
+	assert.NotEmpty(t, latest.Note)
+	assert.NotEmpty(t, latest.Tags)
+
+}
 
 func TestCreateExpense(t *testing.T) {
 	body := bytes.NewBufferString(`{
