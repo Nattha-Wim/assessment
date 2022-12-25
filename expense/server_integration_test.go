@@ -23,7 +23,6 @@ func TestGetAllExpenses(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 	assert.Greater(t, len(exp), 0)
-
 }
 
 func TestGetExpenseById(t *testing.T) {
