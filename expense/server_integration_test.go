@@ -13,6 +13,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestGetAllExpenses(t *testing.T) {
+	seedExpense(t)
+
+	var exp []Expense
+	res := request(http.MethodGet, uri("expenses"), nil)
+	err := res.Decode(&exp)
+
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+	assert.Greater(t, len(exp), 0)
+}
+
 func TestGetExpenseById(t *testing.T) {
 	c := seedExpense(t)
 	var latest Expense
