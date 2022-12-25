@@ -13,6 +13,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestUpdateExpense(t *testing.T) {
+	c := seedExpense(t)
+	//[]string{"beverage"}
+	exp := Expense{
+		Title:  "apple smoothie",
+		Amount: 89.00,
+		Note:   "no discount",
+		Tags:   []string{"beverage"},
+	}
+	payload, _ := json.Marshal(exp)
+
+	var latest Expense
+	res := request(http.MethodPut, uri("expenses", strconv.Itoa(c.Id)), bytes.NewBuffer(payload))
+	err := res.Decode(&latest)
+	latest.Id = c.Id
+
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	assert.Equal(t, exp.Title, latest.Title)
+	assert.Equal(t, exp.Amount, latest.Amount)
+	assert.Equal(t, exp.Note, latest.Note)
+	assert.Equal(t, exp.Tags, latest.Tags)
+
+}
 func TestGetAllExpenses(t *testing.T) {
 	seedExpense(t)
 
