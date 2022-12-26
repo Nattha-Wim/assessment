@@ -15,7 +15,6 @@ import (
 
 func TestUpdateExpense(t *testing.T) {
 	c := seedExpense(t)
-	//[]string{"beverage"}
 	exp := Expense{
 		Title:  "apple smoothie",
 		Amount: 89.00,
@@ -76,7 +75,6 @@ func TestCreateExpense(t *testing.T) {
 		}`)
 
 	var detailExp Expense
-	detailTags := []string{"food", "beverage"}
 	res := request(http.MethodPost, uri("expenses"), body)
 	err := res.Decode(&detailExp)
 
@@ -86,7 +84,12 @@ func TestCreateExpense(t *testing.T) {
 	assert.Equal(t, "salmon don & water", detailExp.Title)
 	assert.Equal(t, 350.00, detailExp.Amount)
 	assert.Equal(t, "dinner with friend at friday night", detailExp.Note)
-	assert.Equal(t, detailTags, detailExp.Tags)
+	assert.Equal(t, []string{"food", "beverage"}, detailExp.Tags)
+}
+
+func TestHomeExpenses(t *testing.T) {
+	res := request(http.MethodGet, uri(), nil)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
 }
 
 func seedExpense(t *testing.T) Expense {
