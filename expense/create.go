@@ -8,7 +8,7 @@ import (
 	"github.com/lib/pq"
 )
 
-func CreateExpense(c echo.Context) error {
+func (h *handler) CreateExpense(c echo.Context) error {
 	var exp Expense
 
 	err := c.Bind(&exp)
@@ -16,7 +16,7 @@ func CreateExpense(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, Err{Message: err.Error()})
 	}
 	log.Println(exp.Tags)
-	row := db.QueryRow("INSERT INTO expenses (title, amount, note, tags) values($1, $2, $3, $4) RETURNING id", exp.Title, exp.Amount, exp.Note, pq.Array(exp.Tags))
+	row := h.db.QueryRow("INSERT INTO expenses (title, amount, note, tags) values($1, $2, $3, $4) RETURNING id", exp.Title, exp.Amount, exp.Note, pq.Array(exp.Tags))
 	err = row.Scan(&exp.Id)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, Err{Message: err.Error()})

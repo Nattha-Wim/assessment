@@ -6,6 +6,6 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func HomeExpenses(c echo.Context) error {
+func (h *handler) HomeExpenses(c echo.Context) error {
 	return c.JSON(http.StatusOK, "OK")
 }

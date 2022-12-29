@@ -7,16 +7,16 @@ import (
 	"github.com/lib/pq"
 )
 
-func GetAllExpenses(c echo.Context) error {
+func (h *handler) GetAllExpenses(c echo.Context) error {
 
-	stmt, err := db.Prepare("SELECT * FROM expenses")
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, Err{Message: "can't prepare query all expenses"})
-	}
+	// stmt, err := h.db.Prepare("SELECT * FROM expenses")
+	// if err != nil {
+	// 	return c.JSON(http.StatusInternalServerError, Err{Message: "can't prepare query all expenses!!!"})
+	// }
 
-	rows, err := stmt.Query()
+	rows, err := h.db.Query("SELECT * FROM expenses")
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, Err{Message: "can't prepare query all expenses: " + err.Error()})
+		return c.JSON(http.StatusInternalServerError, Err{Message: "can't prepare query all expenses:  " + err.Error()})
 	}
 
 	detailExp := []Expense{}
