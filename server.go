@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -15,8 +16,14 @@ import (
 )
 
 func main() {
+	var db *sql.DB
+	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatal("Connect to database error", err)
+	}
 
-	expense.InitDB()
+	handler := expense.NewApplication(db)
+	handler.InitDB()
 
 	e := echo.New()
 
@@ -29,11 +36,11 @@ func main() {
 		return false, nil
 	}))
 
-	e.GET("/", expense.HomeExpenses)
-	e.POST("/expenses", expense.CreateExpenses)
-	e.GET("/expenses/:id", expense.GetExpensesById)
-	e.GET("/expenses", expense.GetAllExpenses)
-	e.PUT("/expenses/:id", expense.UpdateExpenses)
+	e.GET("/", handler.HomeExpenses)
+	e.POST("/expenses", handler.CreateExpense)
+	e.GET("/expenses/:id", handler.GetExpenseById)
+	e.GET("/expenses", handler.GetAllExpenses)
+	e.PUT("/expenses/:id", handler.UpdateExpenses)
 
 	go func() {
 		log.Println("server starting at :2565")
