@@ -15,12 +15,12 @@ func (h *handler) GetExpenseById(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, Err{Message: "id should be int " + err.Error()})
 	}
-	// stmt, err := h.db.Prepare("SELECT * FROM expenses WHERE id = $1")
-	// if err != nil {
-	// 	return c.JSON(http.StatusInternalServerError, Err{Message: "can't prepare query user statment" + err.Error()})
-	// }
+	stmt, err := h.db.Prepare("SELECT * FROM expenses WHERE id = $1")
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, Err{Message: "can't prepare query user statment" + err.Error()})
+	}
 
-	res := h.db.QueryRow("SELECT * FROM expenses WHERE id = $1", rowID)
+	res := stmt.QueryRow(rowID)
 	detailExp := Expense{}
 	err = res.Scan(&detailExp.Id, &detailExp.Title, &detailExp.Amount, &detailExp.Note, pq.Array(&detailExp.Tags))
 	if err != nil {

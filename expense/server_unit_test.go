@@ -64,7 +64,7 @@ func TestGetExpenseById(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"id", "title", "amount", "note", "tags"}).
 		AddRow(expense.Id, expense.Title, expense.Amount, expense.Note, pq.Array(expense.Tags))
 
-	mock.ExpectQuery(query).WillReturnRows(rows)
+	mock.ExpectPrepare(query).ExpectQuery().WillReturnRows(rows)
 
 	c := e.NewContext(req, rec)
 	c.SetParamNames("id")
@@ -92,11 +92,11 @@ func TestGetAllExpenses(t *testing.T) {
 	repo := handler{db}
 
 	tag := []string{"beverage"}
-	newsMockRows := sqlmock.NewRows([]string{"id", "title", "amount", "note", "tags"}).
+	rows := sqlmock.NewRows([]string{"id", "title", "amount", "note", "tags"}).
 		AddRow(1, "orange juice", 90, "no discount", pq.Array(tag)).
 		AddRow(2, "apple juice", 90, "no discount", pq.Array(tag))
 
-	mock.ExpectQuery("^SELECT (.+) FROM expenses").WillReturnRows(newsMockRows)
+	mock.ExpectPrepare("^SELECT (.+) FROM expenses").ExpectQuery().WillReturnRows(rows)
 
 	c := e.NewContext(req, rec)
 

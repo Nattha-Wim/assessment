@@ -9,12 +9,12 @@ import (
 
 func (h *handler) GetAllExpenses(c echo.Context) error {
 
-	// stmt, err := h.db.Prepare("SELECT * FROM expenses")
-	// if err != nil {
-	// 	return c.JSON(http.StatusInternalServerError, Err{Message: "can't prepare query all expenses!!!"})
-	// }
+	stmt, err := h.db.Prepare("SELECT * FROM expenses")
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, Err{Message: "can't prepare query all expenses"})
+	}
 
-	rows, err := h.db.Query("SELECT * FROM expenses")
+	rows, err := stmt.Query()
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, Err{Message: "can't prepare query all expenses:  " + err.Error()})
 	}
