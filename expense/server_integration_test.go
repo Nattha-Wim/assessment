@@ -15,52 +15,56 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestHomeExpenses(t *testing.T) {
+	res := request(http.MethodGet, uri(), nil)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+}
+
 func TestUpdateExpense(t *testing.T) {
-	c := seedExpense(t)
-	exp := Expense{
+	exp := seedExpense(t)
+	expense := Expense{
 		Title:  "apple smoothie",
 		Amount: 89.00,
 		Note:   "no discount",
 		Tags:   []string{"beverage"},
 	}
-	payload, _ := json.Marshal(exp)
+	payload, _ := json.Marshal(expense)
 
 	var latest Expense
-	res := request(http.MethodPut, uri("expenses", strconv.Itoa(c.Id)), bytes.NewBuffer(payload))
+	res := request(http.MethodPut, uri("expenses", strconv.Itoa(exp.Id)), bytes.NewBuffer(payload))
 	err := res.Decode(&latest)
-	latest.Id = c.Id
+	latest.Id = exp.Id
 
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
-
-	assert.Equal(t, exp.Title, latest.Title)
-	assert.Equal(t, exp.Amount, latest.Amount)
-	assert.Equal(t, exp.Note, latest.Note)
-	assert.Equal(t, exp.Tags, latest.Tags)
+	assert.Equal(t, expense.Title, latest.Title)
+	assert.Equal(t, expense.Amount, latest.Amount)
+	assert.Equal(t, expense.Note, latest.Note)
+	assert.Equal(t, expense.Tags, latest.Tags)
 
 }
 func TestGetAllExpenses(t *testing.T) {
 	seedExpense(t)
 
-	var exp []Expense
+	var expense []Expense
 	res := request(http.MethodGet, uri("expenses"), nil)
-	err := res.Decode(&exp)
+	err := res.Decode(&expense)
 
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
-	assert.Greater(t, len(exp), 0)
+	assert.Greater(t, len(expense), 0)
 }
 
 func TestGetExpenseById(t *testing.T) {
-	c := seedExpense(t)
+	exp := seedExpense(t)
+
 	var latest Expense
-	res := request(http.MethodGet, uri("expenses", strconv.Itoa(c.Id)), nil)
+	res := request(http.MethodGet, uri("expenses", strconv.Itoa(exp.Id)), nil)
 	err := res.Decode(&latest)
 
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
-
-	assert.Equal(t, c.Id, latest.Id)
+	assert.Equal(t, exp.Id, latest.Id)
 	assert.NotEmpty(t, latest.Title)
 	assert.NotEmpty(t, latest.Amount)
 	assert.NotEmpty(t, latest.Note)
@@ -76,22 +80,17 @@ func TestCreateExpense(t *testing.T) {
 		"tags": ["food", "beverage"]
 		}`)
 
-	var detailExp Expense
+	var expense Expense
 	res := request(http.MethodPost, uri("expenses"), body)
-	err := res.Decode(&detailExp)
+	err := res.Decode(&expense)
 
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, res.StatusCode)
-	assert.NotEqual(t, 0, detailExp.Id)
-	assert.Equal(t, "salmon don & water", detailExp.Title)
-	assert.Equal(t, 350.00, detailExp.Amount)
-	assert.Equal(t, "dinner with friend at friday night", detailExp.Note)
-	assert.Equal(t, []string{"food", "beverage"}, detailExp.Tags)
-}
-
-func TestHomeExpenses(t *testing.T) {
-	res := request(http.MethodGet, uri(), nil)
-	assert.Equal(t, http.StatusOK, res.StatusCode)
+	assert.NotEqual(t, 0, expense.Id)
+	assert.Equal(t, "salmon don & water", expense.Title)
+	assert.Equal(t, 350.00, expense.Amount)
+	assert.Equal(t, "dinner with friend at friday night", expense.Note)
+	assert.Equal(t, []string{"food", "beverage"}, expense.Tags)
 }
 
 func seedExpense(t *testing.T) Expense {
@@ -120,11 +119,10 @@ func uri(paths ...string) string {
 }
 
 type Response struct {
-	*http.Response // มีของที่ response กลับมาหมดเลย
-	err            error
+	*http.Response
+	err error
 }
 
-// put things(user) that we want to interface{}
 func (r *Response) Decode(v interface{}) error {
 	if r.err != nil {
 		return r.err
