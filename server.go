@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	var db *sql.DB
+	//var db *sql.DB
 	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatal("Connect to database error", err)
@@ -42,9 +42,10 @@ func main() {
 	e.GET("/expenses", handler.GetAllExpenses)
 	e.PUT("/expenses/:id", handler.UpdateExpenses)
 
+	serverPort := ":2565"
 	go func() {
-		log.Println("server starting at :2565")
-		if err := e.Start(":2565"); err != nil && err != http.ErrServerClosed {
+		log.Println("server starting at " + serverPort)
+		if err := e.Start(serverPort); err != nil && err != http.ErrServerClosed {
 			e.Logger.Fatal("shutting down the server")
 		}
 	}()

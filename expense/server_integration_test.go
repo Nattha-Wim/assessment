@@ -1,4 +1,5 @@
 //go:build integration
+// +build integration
 
 package expense
 
@@ -15,34 +16,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const serverPort = "2565"
+
 func TestHomeExpenses(t *testing.T) {
 	res := request(http.MethodGet, uri(), nil)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 }
 
-func TestUpdateExpense(t *testing.T) {
-	exp := seedExpense(t)
-	expense := Expense{
-		Title:  "apple smoothie",
-		Amount: 89.00,
-		Note:   "no discount",
-		Tags:   []string{"beverage"},
-	}
-	payload, _ := json.Marshal(expense)
-
-	var latest Expense
-	res := request(http.MethodPut, uri("expenses", strconv.Itoa(exp.Id)), bytes.NewBuffer(payload))
-	err := res.Decode(&latest)
-	latest.Id = exp.Id
-
-	assert.Nil(t, err)
-	assert.Equal(t, http.StatusOK, res.StatusCode)
-	assert.Equal(t, expense.Title, latest.Title)
-	assert.Equal(t, expense.Amount, latest.Amount)
-	assert.Equal(t, expense.Note, latest.Note)
-	assert.Equal(t, expense.Tags, latest.Tags)
-
-}
 func TestGetAllExpenses(t *testing.T) {
 	seedExpense(t)
 
@@ -71,13 +51,37 @@ func TestGetExpenseById(t *testing.T) {
 	assert.NotEmpty(t, latest.Tags)
 
 }
+func TestUpdateExpense(t *testing.T) {
+	exp := seedExpense(t)
+	expense := Expense{
+		Title:  "apple smoothie",
+		Amount: 89.00,
+		Note:   "no discount",
+		Tags:   []string{"beverage"},
+	}
+	payload, _ := json.Marshal(expense)
+
+	var latest Expense
+	res := request(http.MethodPut, uri("expenses", strconv.Itoa(exp.Id)), bytes.NewBuffer(payload))
+	defer res.Body.Close()
+	err := res.Decode(&latest)
+	latest.Id = exp.Id
+
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+	assert.Equal(t, expense.Title, latest.Title)
+	assert.Equal(t, expense.Amount, latest.Amount)
+	assert.Equal(t, expense.Note, latest.Note)
+	assert.Equal(t, expense.Tags, latest.Tags)
+
+}
 
 func TestCreateExpense(t *testing.T) {
 	body := bytes.NewBufferString(`{
-		"title": "salmon don & water",
-		"amount": 350.00,
-		"note": "dinner with friend at friday night", 
-		"tags": ["food", "beverage"]
+		"title": "strawberry smoothie",
+		"amount": 79.00,
+		"note": "night market promotion discount 10 bath",
+		"tags": ["food","beverage"]
 		}`)
 
 	var expense Expense
@@ -87,29 +91,30 @@ func TestCreateExpense(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, res.StatusCode)
 	assert.NotEqual(t, 0, expense.Id)
-	assert.Equal(t, "salmon don & water", expense.Title)
-	assert.Equal(t, 350.00, expense.Amount)
-	assert.Equal(t, "dinner with friend at friday night", expense.Note)
+	assert.Equal(t, "strawberry smoothie", expense.Title)
+	assert.Equal(t, 79.00, expense.Amount)
+	assert.Equal(t, "night market promotion discount 10 bath", expense.Note)
 	assert.Equal(t, []string{"food", "beverage"}, expense.Tags)
 }
 
 func seedExpense(t *testing.T) Expense {
 	var exp Expense
 	body := bytes.NewBufferString(`{
-		"title": "salmon don & water",
-		"amount": 350.00,
-		"note": "dinner with friend at friday night", 
-		"tags": ["food", "beverage"]
+		"title": "strawberry smoothie",
+    	"amount": 79.00,
+    	"note": "night market promotion discount 10 bath",
+   		"tags": ["food","beverage"]
 		}`)
+
 	err := request(http.MethodPost, uri("expenses"), body).Decode(&exp)
 	if err != nil {
-		t.Fatal("can't create user", err)
+		t.Fatal("can't create expense", err)
 	}
 	return exp
 }
 
 func uri(paths ...string) string {
-	host := "http://localhost:2565"
+	host := "http://localhost:" + serverPort
 	if paths == nil {
 		return host
 	}
