@@ -8,7 +8,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func (h *handler) InitDB() {
+func (h handler) InitDB() {
 	createTb := `CREATE TABLE IF NOT EXISTS expenses (
 		id SERIAL PRIMARY KEY,
 		title TEXT,

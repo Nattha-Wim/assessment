@@ -7,7 +7,7 @@ import (
 	"github.com/lib/pq"
 )
 
-func (h *handler) UpdateExpenses(c echo.Context) error {
+func (h handler) UpdateExpenses(c echo.Context) error {
 	var err error
 	rowID := c.Param("id")
 

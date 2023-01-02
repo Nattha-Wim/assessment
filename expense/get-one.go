@@ -8,7 +8,7 @@ import (
 	"github.com/lib/pq"
 )
 
-func (h *handler) GetExpenseById(c echo.Context) error {
+func (h handler) GetExpenseById(c echo.Context) error {
 	rowID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, Err{Message: "id should be int " + err.Error()})

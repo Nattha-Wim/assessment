@@ -8,7 +8,7 @@ import (
 	"github.com/lib/pq"
 )
 
-func (h *handler) CreateExpense(c echo.Context) error {
+func (h handler) CreateExpense(c echo.Context) error {
 	var exp Expense
 	log.Println("PPP ", exp)
 	err := c.Bind(&exp)

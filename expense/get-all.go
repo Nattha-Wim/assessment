@@ -7,7 +7,7 @@ import (
 	"github.com/lib/pq"
 )
 
-func (h *handler) GetAllExpenses(c echo.Context) error {
+func (h handler) GetAllExpenses(c echo.Context) error {
 
 	stmt, err := h.db.Prepare("SELECT * FROM expenses")
 	if err != nil {
