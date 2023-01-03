@@ -39,10 +39,9 @@ func uri(paths ...string) string {
 }
 
 func ExpenseNewRows(t *testing.T) *sqlmock.Rows {
-	tag := []string{"beverage"}
 	rows := sqlmock.NewRows([]string{"id", "title", "amount", "note", "tags"}).
-		AddRow(1, "orange juice", 90, "no discount", pq.Array(tag)).
-		AddRow(2, "apple juice", 100, "no discount", pq.Array(tag))
+		AddRow(1, "orange juice", 90, "no discount", pq.Array([]string{"beverage"})).
+		AddRow(2, "apple juice", 100, "no discount", pq.Array([]string{"beverage"}))
 	return rows
 }
 
@@ -50,18 +49,6 @@ func request(method, url string, body io.Reader) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, url, body)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	return req
-}
-
-type Response struct {
-	*http.Response
-	err error
-}
-
-func (r *Response) Decode(v interface{}) error {
-	if r.err != nil {
-		return r.err
-	}
-	return json.NewDecoder(r.Body).Decode(v)
 }
 
 var expense = Expense{
@@ -141,8 +128,8 @@ func TestCreateExpenses(t *testing.T) {
 	c := e.NewContext(req, rec)
 
 	query := "INSERT INTO expenses (title, amount, note, tags) VALUES ($1, $2, $3, $4) RETURNING id"
-	mockNewRow := sqlmock.NewRows([]string{"id"}).AddRow(1)
-	mock.ExpectQuery(regexp.QuoteMeta(query)).WithArgs(expense.Title, expense.Amount, expense.Note, pq.Array(expense.Tags)).WillReturnRows(mockNewRow)
+	rows := sqlmock.NewRows([]string{"id"}).AddRow(1)
+	mock.ExpectQuery(regexp.QuoteMeta(query)).WithArgs(expense.Title, expense.Amount, expense.Note, pq.Array(expense.Tags)).WillReturnRows(rows)
 
 	err := h.CreateExpense(c)
 
