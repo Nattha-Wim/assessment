@@ -3,12 +3,14 @@
 package expense
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -46,7 +48,7 @@ func seedExpense(t *testing.T) *sqlmock.Rows {
 }
 
 func request(method, url string, body io.Reader) *http.Request {
-	req := httptest.NewRequest(http.MethodGet, url, nil)
+	req := httptest.NewRequest(http.MethodGet, url, body)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	return req
 }
@@ -122,7 +124,6 @@ func TestGetAllExpenses(t *testing.T) {
 
 func TestCreateExpenses(t *testing.T) {
 	body := strings.NewReader(`{
-		"id": 1,
 		"title": "orange juice",
 		"amount": 90.00,
 		"note": "no discount",
@@ -136,49 +137,48 @@ func TestCreateExpenses(t *testing.T) {
 	h := handler{db}
 	c := e.NewContext(req, rec)
 
-	query := "INSERT INTO expenses \\(id, title, amount, note, tags\\) VALUES \\(\\?, \\?, \\?, \\?, \\?\\) RETURNING id"
-	prep := mock.ExpectQuery(query)
-	prep.WithArgs(1, "orange juice", 90.00, "no discount", pq.Array([]string{"beverage"})).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
-	//log.Println("------- ", prep.WithArgs(sqlmock.AnyArg(), "orange juice", 90.00, "no discount", pq.Array([]string{"beverage"})).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1)))
+	query := "INSERT INTO expenses (title, amount, note, tags) VALUES ($1, $2, $3, $4) RETURNING id"
+	prep := mock.ExpectQuery(regexp.QuoteMeta(query))
+	prep.WithArgs("orange juice", 90.00, "no discount", pq.Array([]string{"beverage"})).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 
 	err := h.CreateExpense(c)
 
+	expected := `{"id":1,"title":"orange juice","amount":90,"note":"no discount","tags":["beverage"]}`
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusCreated, rec.Code)
+		assert.Equal(t, expected, strings.TrimSpace(rec.Body.String()))
 	}
 }
 
-// func TestUpdateExpenses(t *testing.T) {
+func TestUpdateExpenses(t *testing.T) {
+	expense := Expense{
+		Title:  "orange juice",
+		Amount: 120.00,
+		Note:   "no discount",
+		Tags:   []string{"beverage"},
+	}
+	payload, _ := json.Marshal(expense)
 
-// 	body := strings.NewReader(`{
-// 		"id": 1,
-// 		"title": "orange juice",
-// 		"amount": 90.00,
-// 		"note": "no discount",
-// 		"tags": ["beverage"]
-// 		}`)
+	e := echo.New()
+	req := request(http.MethodPut, uri("expenses", strconv.Itoa(1)), bytes.NewBuffer(payload))
+	rec := httptest.NewRecorder()
+	db, mock := NewMock()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("id")
+	c.SetParamValues("1")
+	h := handler{db}
 
-// 	e := echo.New()
-// 	req := request(http.MethodPost, uri("expenses", strconv.Itoa(1)), body)
-// 	rec := httptest.NewRecorder()
-// 	db, mock := NewMock()
-// 	c := e.NewContext(req, rec)
-// 	c.SetParamNames("id")
-// 	c.SetParamValues("1")
-// 	h := handler{db}
+	prep := mock.ExpectPrepare(regexp.QuoteMeta("UPDATE expenses SET title=$2, amount=$3, note=$4, tags=$5 WHERE id = $1"))
+	prep.ExpectExec().WithArgs(1, "orange juice", 120.00, "no discount", pq.Array([]string{"beverage"})).WillReturnResult(sqlmock.NewResult(1, 1))
 
-// 	//query := "UPDATE expenses SET title=\\?, amount=\\?, note=\\?, tags=\\? WHERE id = \\?"
-// 	prep := mock.ExpectPrepare("UPDATE expenses SET title=$1, amount=$2, note=$3, tags=$4 WHERE id = $5")
+	err := h.UpdateExpenses(c)
 
-// 	prep.ExpectExec().WithArgs("orange juice", 20, "good", sqlmock.AnyArg(), 1).WillReturnResult(sqlmock.NewResult(1, 1))
-
-// 	err := h.UpdateExpenses(c)
-
-// 	if assert.NoError(t, err) {
-// 		assert.Equal(t, http.StatusOK, rec.Code)
-// 		//assert.Equal(t, expected, strings.TrimSpace(rec.Body.String()))
-// 	}
-// }
+	expected := `{"id":1,"title":"orange juice","amount":120,"note":"no discount","tags":["beverage"]}`
+	if assert.NoError(t, err) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, expected, strings.TrimSpace(rec.Body.String()))
+	}
+}
 
 // var u = Expense{
 // 	Id:     1,

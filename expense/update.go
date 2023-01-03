@@ -2,6 +2,7 @@ package expense
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/lib/pq"
@@ -9,20 +10,23 @@ import (
 
 func (h handler) UpdateExpenses(c echo.Context) error {
 	var err error
-	rowID := c.Param("id")
-
+	rowID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, Err{Message: "id should be int " + err.Error()})
+	}
 	exp := Expense{}
 	err = c.Bind(&exp)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, Err{Message: err.Error()})
 	}
-	//stmt, err := h.db.Prepare("UPDATE expenses SET title=?, amount=?, note=?, tags=? WHERE id = ?")
+
 	stmt, err := h.db.Prepare("UPDATE expenses SET title=$2, amount=$3, note=$4, tags=$5 WHERE id = $1")
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, Err{Message: err.Error()})
 	}
 
-	if _, err := stmt.Exec(rowID, exp.Title, exp.Amount, exp.Note, pq.Array(exp.Tags)); err != nil {
+	exp.Id = rowID
+	if _, err := stmt.Exec(exp.Id, exp.Title, exp.Amount, exp.Note, pq.Array(exp.Tags)); err != nil {
 		return c.JSON(http.StatusInternalServerError, Err{Message: err.Error()})
 	}
 

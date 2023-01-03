@@ -21,6 +21,7 @@ func (h handler) GetExpenseById(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, Err{Message: "can't sacan expense: !!! " + err.Error()})
 	}
+
 	return c.JSON(http.StatusOK, detailExp)
 
 }
