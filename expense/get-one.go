@@ -19,7 +19,7 @@ func (h handler) GetExpenseById(c echo.Context) error {
 	detailExp := Expense{}
 	err = row.Scan(&detailExp.Id, &detailExp.Title, &detailExp.Amount, &detailExp.Note, pq.Array(&detailExp.Tags))
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, Err{Message: "can't sacan expense: !!! " + err.Error()})
+		return c.JSON(http.StatusInternalServerError, Err{Message: "Van't sacan expense: !!! " + err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, detailExp)

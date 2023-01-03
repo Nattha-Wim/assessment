@@ -17,11 +17,10 @@ func (h handler) InitDB() {
 		tags TEXT[]
 	);`
 
-	_, err := h.db.Exec(createTb)
-	if err != nil {
-		log.Fatal("can't create table", err)
+	if _, err := h.db.Exec(createTb); err != nil {
+		log.Fatal("Can't create table", err)
 	}
-	fmt.Println("create table seccess")
+	fmt.Println("Create table seccess")
 }
 
 func NewApplication(db *sql.DB) *handler {
