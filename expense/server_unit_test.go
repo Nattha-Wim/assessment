@@ -16,7 +16,6 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	//"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +38,7 @@ func uri(paths ...string) string {
 	return strings.Join(url, "/")
 }
 
-func seedExpense(t *testing.T) *sqlmock.Rows {
+func ExpenseNewRows(t *testing.T) *sqlmock.Rows {
 	tag := []string{"beverage"}
 	rows := sqlmock.NewRows([]string{"id", "title", "amount", "note", "tags"}).
 		AddRow(1, "orange juice", 90, "no discount", pq.Array(tag)).
@@ -65,6 +64,18 @@ func (r *Response) Decode(v interface{}) error {
 	return json.NewDecoder(r.Body).Decode(v)
 }
 
+var expense = Expense{
+	Title:  "orange juice",
+	Amount: 120.00,
+	Note:   "no discount",
+	Tags:   []string{"beverage"},
+}
+
+func detailExpense() *bytes.Buffer {
+	body, _ := json.Marshal(expense)
+	return bytes.NewBuffer(body)
+}
+
 func TestHomeExpense(t *testing.T) {
 	e := echo.New()
 	req := request(http.MethodGet, uri(), nil)
@@ -86,11 +97,10 @@ func TestGetExpenseById(t *testing.T) {
 	db, mock := NewMock()
 	h := handler{db}
 	c := e.NewContext(req, rec)
-	c.SetPath("/expenses/:id")
 	c.SetParamNames("id")
 	c.SetParamValues("1")
 
-	rows := seedExpense(t)
+	rows := ExpenseNewRows(t)
 	mock.ExpectQuery("SELECT (.+) FROM expenses WHERE id = ?").WillReturnRows(rows)
 
 	err := h.GetExpenseById(c)
@@ -110,7 +120,7 @@ func TestGetAllExpenses(t *testing.T) {
 	h := handler{db}
 	c := e.NewContext(req, rec)
 
-	rows := seedExpense(t)
+	rows := ExpenseNewRows(t)
 	mock.ExpectPrepare("SELECT (.+) FROM expenses").ExpectQuery().WillReturnRows(rows)
 
 	err := h.GetAllExpenses(c)
@@ -123,27 +133,20 @@ func TestGetAllExpenses(t *testing.T) {
 }
 
 func TestCreateExpenses(t *testing.T) {
-	body := strings.NewReader(`{
-		"title": "orange juice",
-		"amount": 90.00,
-		"note": "no discount",
-		"tags": ["beverage"]
-		}`)
-
 	e := echo.New()
-	req := request(http.MethodPost, uri("expenses"), body)
+	req := request(http.MethodPost, uri("expenses"), detailExpense())
 	rec := httptest.NewRecorder()
 	db, mock := NewMock()
 	h := handler{db}
 	c := e.NewContext(req, rec)
 
 	query := "INSERT INTO expenses (title, amount, note, tags) VALUES ($1, $2, $3, $4) RETURNING id"
-	prep := mock.ExpectQuery(regexp.QuoteMeta(query))
-	prep.WithArgs("orange juice", 90.00, "no discount", pq.Array([]string{"beverage"})).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+	mockNewRow := sqlmock.NewRows([]string{"id"}).AddRow(1)
+	mock.ExpectQuery(regexp.QuoteMeta(query)).WithArgs(expense.Title, expense.Amount, expense.Note, pq.Array(expense.Tags)).WillReturnRows(mockNewRow)
 
 	err := h.CreateExpense(c)
 
-	expected := `{"id":1,"title":"orange juice","amount":90,"note":"no discount","tags":["beverage"]}`
+	expected := `{"id":1,"title":"orange juice","amount":120,"note":"no discount","tags":["beverage"]}`
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusCreated, rec.Code)
 		assert.Equal(t, expected, strings.TrimSpace(rec.Body.String()))
@@ -151,16 +154,8 @@ func TestCreateExpenses(t *testing.T) {
 }
 
 func TestUpdateExpenses(t *testing.T) {
-	expense := Expense{
-		Title:  "orange juice",
-		Amount: 120.00,
-		Note:   "no discount",
-		Tags:   []string{"beverage"},
-	}
-	payload, _ := json.Marshal(expense)
-
 	e := echo.New()
-	req := request(http.MethodPut, uri("expenses", strconv.Itoa(1)), bytes.NewBuffer(payload))
+	req := request(http.MethodPut, uri("expenses", strconv.Itoa(1)), detailExpense())
 	rec := httptest.NewRecorder()
 	db, mock := NewMock()
 	c := e.NewContext(req, rec)
@@ -168,8 +163,9 @@ func TestUpdateExpenses(t *testing.T) {
 	c.SetParamValues("1")
 	h := handler{db}
 
-	prep := mock.ExpectPrepare(regexp.QuoteMeta("UPDATE expenses SET title=$2, amount=$3, note=$4, tags=$5 WHERE id = $1"))
-	prep.ExpectExec().WithArgs(1, "orange juice", 120.00, "no discount", pq.Array([]string{"beverage"})).WillReturnResult(sqlmock.NewResult(1, 1))
+	query := "UPDATE expenses SET title=$2, amount=$3, note=$4, tags=$5 WHERE id = $1"
+	prep := mock.ExpectPrepare(regexp.QuoteMeta(query))
+	prep.ExpectExec().WithArgs(1, expense.Title, expense.Amount, expense.Note, pq.Array(expense.Tags)).WillReturnResult(sqlmock.NewResult(1, 1))
 
 	err := h.UpdateExpenses(c)
 
@@ -179,77 +175,3 @@ func TestUpdateExpenses(t *testing.T) {
 		assert.Equal(t, expected, strings.TrimSpace(rec.Body.String()))
 	}
 }
-
-// var u = Expense{
-// 	Id:     1,
-// 	Title:  "strawberry smoothie",
-// 	Amount: 79.00,
-// 	Note:   "night market promotion discount 10 bath",
-// 	Tags:   []string{"food", "beverage"},
-// }
-
-// func TestFind(t *testing.T) {
-// 	e := echo.New()
-// 	req := request(http.MethodGet, uri("expenses"), nil)
-// 	rec := httptest.NewRecorder()
-// 	c := e.NewContext(req, rec)
-// 	db, mock := NewMock()
-// 	repo := handler{db}
-
-// 	query := "SELECT id, name, title, note, tags FROM expenses"
-
-// 	rows := sqlmock.NewRows([]string{"id", "title", "amount", "note", "tags"}).
-// 		AddRow(u.Id, u.Title, u.Amount, u.Note, pq.Array(u.Tags))
-
-// 	mock.ExpectQuery(query).WillReturnRows(rows)
-
-// 	err := repo.GetAll(c)
-
-// 	expected := `[{"id":1,"title":"strawberry smoothie","amount":79,"note":"night market promotion discount 10 bath","tags":["food","beverage"]}]`
-// 	if assert.NoError(t, err) {
-// 		assert.Equal(t, http.StatusOK, rec.Code)
-// 		assert.Equal(t, expected, strings.TrimSpace(rec.Body.String()))
-// 	}
-// }
-
-// func TestUpdate(t *testing.T) {
-
-// 	e := echo.New()
-// 	req := request(http.MethodPut, uri("expenses/1"), nil)
-// 	rec := httptest.NewRecorder()
-// 	c := e.NewContext(req, rec)
-// 	c.SetParamNames("id")
-// 	c.SetParamValues("1")
-// 	db, mock := NewMock()
-// 	repo := handler{db}
-
-// 	query := "UPDATE expenses SET title = \\?, amount = \\?, note = \\?, tags = \\? WHERE id = \\?"
-
-// 	prep := mock.ExpectPrepare(query)
-// 	prep.ExpectExec().WithArgs(u.Title, u.Amount, u.Note, u.Tags, u.Id).WillReturnResult(sqlmock.NewResult(0, 1))
-
-// 	expected := `[{"id":1,"title":"strawberry smoothie","amount":79,"note":"night market promotion discount 10 bath","tags":["food","beverage"]}]`
-
-// 	err := repo.Update(c)
-// 	if assert.NoError(t, err) {
-// 		assert.Equal(t, http.StatusOK, rec.Code)
-// 		assert.Equal(t, expected, strings.TrimSpace(rec.Body.String()))
-// 	}
-// }
-
-// func TestCreate(t *testing.T) {
-// 	e := echo.New()
-// 	req := request(http.MethodPost, uri("expenses1"), nil)
-// 	rec := httptest.NewRecorder()
-// 	c := e.NewContext(req, rec)
-// 	db, mock := NewMock()
-// 	repo := handler{db}
-
-// 	query := "INSERT INTO expenses \\(id, title, amount, note, tags\\) VALUES \\(\\?, \\?, \\?, \\?, \\?\\)"
-
-// 	prep := mock.ExpectPrepare(query)
-// 	prep.ExpectExec().WithArgs(u.Id, u.Title, u.Amount, u.Note, u.Tags).WillReturnResult(sqlmock.NewResult(0, 1))
-
-// 	err := repo.Create(c)
-// 	assert.NoError(t, err)
-// }
