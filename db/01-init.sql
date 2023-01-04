@@ -9,4 +9,4 @@ CREATE TABLE IF NOT EXISTS expenses (
 		tags TEXT[]
 	);
 
--- INSERT INTO "expenses" ("id", "title", "amount", "note", "tags") VALUES (1, 'apple juice', 75, 'cafe', []string{"dring"});
+INSERT INTO expenses (id, title, amount, note, tags) VALUES (1, 'apple juice', 75.00, 'cafe', ARRAY['drink']);

@@ -8,7 +8,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -23,11 +22,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const serverPort = 2565
+const serverPort = "2565"
 
 func uri(paths ...string) string {
 
-	host := fmt.Sprintf("http://localhost:%d", serverPort)
+	host := "http://localhost:" + serverPort
 	if paths == nil {
 		return host
 	}
@@ -78,18 +77,19 @@ func setUpServer(e *echo.Echo) {
 	}
 
 	h := NewApplication(db)
+
 	e.GET("/", h.HomeExpenses)
 	e.GET("/expenses", h.GetAllExpenses)
 	e.POST("/expenses", h.CreateExpense)
 	e.PUT("/expenses/:id", h.UpdateExpenses)
 	e.GET("/expenses/:id", h.GetExpenseById)
 
-	e.Start(fmt.Sprintf(":%d", serverPort))
+	e.Start(":" + serverPort)
 }
 
 func setUpTimeOut() {
 	for {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 70*time.Second)
+		conn, err := net.DialTimeout("tcp", "localhost:"+serverPort, 70*time.Second)
 		if err != nil {
 			log.Println(err)
 		}
@@ -100,7 +100,7 @@ func setUpTimeOut() {
 	}
 }
 
-func TestITGetAll(t *testing.T) {
+func TestGetAllExpenses(t *testing.T) {
 	// Setup server
 	e := echo.New()
 	go func() {
@@ -144,7 +144,7 @@ func encodExpense(body Expense) *bytes.Buffer {
 	payload, _ := json.Marshal(body)
 	return bytes.NewBuffer(payload)
 }
-func TestITUpdate(t *testing.T) {
+func TestUpdateExpenses(t *testing.T) {
 	// Setup server
 	e := echo.New()
 	go func() {
@@ -175,7 +175,7 @@ func TestITUpdate(t *testing.T) {
 	}
 	log.Println("Bye Bye")
 }
-func TestITCreate(t *testing.T) {
+func TestCreateExpense(t *testing.T) {
 	// Setup server
 	e := echo.New()
 	go func() {
@@ -205,7 +205,7 @@ func TestITCreate(t *testing.T) {
 	log.Println("Bye Bye")
 }
 
-func TestITGetById(t *testing.T) {
+func TestGetExpenseById(t *testing.T) {
 	// Setup server
 	e := echo.New()
 	go func() {
