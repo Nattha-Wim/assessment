@@ -1,6 +1,7 @@
 package expense
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
@@ -19,6 +20,7 @@ func (h handler) GetExpenseById(c echo.Context) error {
 	detailExp := Expense{}
 	err = row.Scan(&detailExp.Id, &detailExp.Title, &detailExp.Amount, &detailExp.Note, pq.Array(&detailExp.Tags))
 	if err != nil {
+		log.Println("get one ", err)
 		return c.JSON(http.StatusInternalServerError, Err{Message: "Can't sacan expense: !!! " + err.Error()})
 	}
 

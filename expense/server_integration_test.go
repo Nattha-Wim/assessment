@@ -26,52 +26,51 @@ import (
 
 const serverPort = 2565
 
-// func TestITGetById(t *testing.T) {
-// 	exp := seedExpense(t)
+func uri(paths ...string) string {
 
-// 	// Setup server
-// 	eh := echo.New()
-// 	go func(e *echo.Echo) {
-// 		db, err := sql.Open("postgres", "postgres://vpovznnb:ayqqQAENpjSG6STGdF5CMxXGni5DAhj0@tiny.db.elephantsql.com/vpovznnb")
-// 		if err != nil {
-// 			log.Fatal(err)
-// 		}
+	host := fmt.Sprintf("http://localhost:%d", serverPort)
+	if paths == nil {
+		return host
+	}
 
-// 		h := NewApplication(db)
+	url := append([]string{host}, paths...)
+	return strings.Join(url, "/")
+}
 
-// 		e.GET("/expenses/:id", h.GetExpenseById)
-// 		e.Start(fmt.Sprintf(":%d", serverPort))
-// 	}(eh)
-// 	for {
-// 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 70*time.Second)
-// 		if err != nil {
-// 			log.Println(err)
-// 		}
-// 		if conn != nil {
-// 			conn.Close()
-// 			break
-// 		}
-// 	}
+type Response struct {
+	*http.Response
+	err error
+}
 
-// 	reqBody := ``
-// 	var latest Expense
-// 	res := request(http.MethodGet, uri("expenses", strconv.Itoa(exp.Id)), strings.NewReader(reqBody))
-// 	err := res.Decode(&latest)
+func (r *Response) Decode(v interface{}) error {
+	if r.err != nil {
+		return r.err
+	}
+	return json.NewDecoder(r.Body).Decode(v)
+}
 
-// 	assert.Nil(t, err)
-// 	assert.Equal(t, http.StatusOK, res.StatusCode)
-// 	assert.Equal(t, exp.Id, latest.Id)
-// 	assert.NotEmpty(t, latest.Title)
-// 	assert.NotEmpty(t, latest.Amount)
-// 	assert.NotEmpty(t, latest.Note)
-// 	assert.NotEmpty(t, latest.Tags)
+func request(method, url string, body io.Reader) *Response {
+	req, _ := http.NewRequest(method, url, body)
+	req.Header.Add("Authorization", os.Getenv("AUTH_TOKEN"))
+	req.Header.Add("Content-Type", "application/json")
+	client := http.Client{}
+	res, err := client.Do(req)
+	return &Response{res, err}
+}
 
-// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-// 	defer cancel()
-// 	err = eh.Shutdown(ctx)
-// 	assert.NoError(t, err)
+func seedExpense(t *testing.T) Expense {
+	body := bytes.NewBufferString(`{
+		"title": "strawberry smoothie",
+		"amount": 79.00,
+		"note": "night market promotion discount 10 bath",
+		"tags": ["food","beverage"]
+		}`)
 
-// }
+	var expense Expense
+	res := request(http.MethodPost, uri("expenses"), body)
+	res.Decode(&expense)
+	return expense
+}
 
 func TestITGetAll(t *testing.T) {
 
@@ -116,7 +115,6 @@ func TestITGetAll(t *testing.T) {
 }
 
 func TestITUpdate(t *testing.T) {
-	exp := seedExpense(t)
 	// Setup server
 	eh := echo.New()
 	go func(e *echo.Echo) {
@@ -127,11 +125,12 @@ func TestITUpdate(t *testing.T) {
 
 		h := NewApplication(db)
 
+		e.POST("/expenses", h.CreateExpense)
 		e.PUT("/expenses/:id", h.UpdateExpenses)
 		e.Start(fmt.Sprintf(":%d", serverPort))
 	}(eh)
 	for {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 30*time.Second)
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 70*time.Second)
 		if err != nil {
 			log.Println(err)
 		}
@@ -140,7 +139,7 @@ func TestITUpdate(t *testing.T) {
 			break
 		}
 	}
-	// Arrange
+	exp := seedExpense(t)
 
 	reqBody := Expense{
 		Title:  "apple smoothie",
@@ -152,6 +151,7 @@ func TestITUpdate(t *testing.T) {
 	var expense Expense
 	res := request(http.MethodPut, uri("expenses", strconv.Itoa(exp.Id)), bytes.NewBuffer(payload))
 	err := res.Decode(&expense)
+	res.Body.Close()
 	expense.Id = exp.Id
 	log.Println("expense seed update : ", expense)
 	assert.Nil(t, err)
@@ -216,6 +216,52 @@ func TestITCreate(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestITGetById(t *testing.T) {
+	// Setup server
+	eh := echo.New()
+	go func(e *echo.Echo) {
+		db, err := sql.Open("postgres", "postgres://vpovznnb:ayqqQAENpjSG6STGdF5CMxXGni5DAhj0@tiny.db.elephantsql.com/vpovznnb")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		h := NewApplication(db)
+
+		e.GET("/expenses/:id", h.GetExpenseById)
+		e.POST("/expenses", h.CreateExpense)
+		e.Start(fmt.Sprintf(":%d", serverPort))
+	}(eh)
+	for {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 70*time.Second)
+		if err != nil {
+			log.Println(err)
+		}
+		if conn != nil {
+			conn.Close()
+			break
+		}
+	}
+
+	expense := seedExpense(t)
+
+	var latest Expense
+	res := request(http.MethodGet, uri("expenses", strconv.Itoa(expense.Id)), nil)
+	err := res.Decode(&latest)
+
+	assert.Nil(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+	assert.Equal(t, expense.Id, latest.Id)
+	assert.NotEmpty(t, latest.Title)
+	assert.NotEmpty(t, latest.Amount)
+	assert.NotEmpty(t, latest.Note)
+	assert.NotEmpty(t, latest.Tags)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err = eh.Shutdown(ctx)
+	assert.NoError(t, err)
+}
+
 func TestHome(t *testing.T) {
 	eh := echo.New()
 	go func(e *echo.Echo) {
@@ -244,80 +290,6 @@ func TestHome(t *testing.T) {
 	defer cancel()
 	eh.Shutdown(ctx)
 
-}
-
-func seedExpense(t *testing.T) Expense {
-	// Setup server
-	eh := echo.New()
-	go func(e *echo.Echo) {
-		db, err := sql.Open("postgres", "postgres://vpovznnb:ayqqQAENpjSG6STGdF5CMxXGni5DAhj0@tiny.db.elephantsql.com/vpovznnb")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		h := NewApplication(db)
-
-		e.POST("/expenses", h.CreateExpense)
-		e.Start(fmt.Sprintf(":%d", serverPort))
-	}(eh)
-	for {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 30*time.Second)
-		if err != nil {
-			log.Println(err)
-		}
-		if conn != nil {
-			conn.Close()
-			break
-		}
-	}
-
-	body := bytes.NewBufferString(`{
-		"title": "strawberry smoothie",
-		"amount": 79.00,
-		"note": "night market promotion discount 10 bath",
-		"tags": ["food","beverage"]
-		}`)
-
-	var expense Expense
-	res := request(http.MethodPost, uri("expenses"), body)
-	res.Decode(&expense)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	eh.Shutdown(ctx)
-	return expense
-}
-
-func uri(paths ...string) string {
-
-	host := fmt.Sprintf("http://localhost:%d", serverPort)
-	if paths == nil {
-		return host
-	}
-
-	url := append([]string{host}, paths...)
-	return strings.Join(url, "/")
-}
-
-type Response struct {
-	*http.Response
-	err error
-}
-
-func (r *Response) Decode(v interface{}) error {
-	if r.err != nil {
-		return r.err
-	}
-	return json.NewDecoder(r.Body).Decode(v)
-}
-
-func request(method, url string, body io.Reader) *Response {
-	req, _ := http.NewRequest(method, url, body)
-	req.Header.Add("Authorization", os.Getenv("AUTH_TOKEN"))
-	req.Header.Add("Content-Type", "application/json")
-	client := http.Client{}
-	res, err := client.Do(req)
-	return &Response{res, err}
 }
 
 // func TestHomeExpenses(t *testing.T) {
