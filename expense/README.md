@@ -36,7 +36,9 @@
   * use expenses.postman_collection_env.json for run test
 ![result](image/postman.png)
 ### Problem
-    First time I separate braches to create each story. When it succeeds I merge it into main branch. I do this process for every story until complete evey story and main branch finally work. So I imporove everything in main branch.
+    First time I separate braches to create each story. When it succeeds I merge it into main branch.
+    I do this process for every story until complete evey story and main branch finally work. 
+    So I imporove everything in main branch.
     But at the end, I realized that I should better improve the code in each branch not the main branch.
 
   ![result](image/git-log-graph.png)
