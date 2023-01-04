@@ -21,16 +21,22 @@
 * Integration Test 
   * DATABASE_URL="postgres://vpovznnb:ayqqQAENpjSG6STGdF5CMxXGni5DAhj0@tiny.db.elephantsql.com/vpovznnb" go run server.go
   * AUTH_TOKEN="_____" go test --tags=integration -v ./...   
+  
+* Multi-Stage build ( use below 3 command )
+  * docker build -t devops:assessment .
+  * docker run devops:assessment 
+  * docker images devops:assessment 
 
+* Docker-compose testing sandbox ( use below 2 command )
+  * docker-compose -f docker-compose.test.yml down    
+  * docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from it_tests
+  * 
 * Postman
   * run  DATABASE_URL="postgres://vpovznnb:ayqqQAENpjSG6STGdF5CMxXGni5DAhj0@tiny.db.elephantsql.com/vpovznnb" go run server.go
   * use expenses.postman_collection_env.json for run test
 
 
-## Unsuccessful
-* docker-compose testing sandbox (integration test)
-    * problem : 
-      Can't create http://localgost:2565/expenses because connection refused. I try to slove it but it not success and I guess the problem is container and network are working separately.
+
 
       
 

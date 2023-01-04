@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	//"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -74,7 +73,7 @@ func seedExpense(t *testing.T) Expense {
 	return expense
 }
 
-func setUpDB(e *echo.Echo) {
+func setUpServer(e *echo.Echo) {
 	db, err := sql.Open("postgres", "postgres://vpovznnb:ayqqQAENpjSG6STGdF5CMxXGni5DAhj0@tiny.db.elephantsql.com/vpovznnb")
 	if err != nil {
 		log.Fatal(err)
@@ -103,18 +102,11 @@ func setUpTimeOut() {
 	}
 }
 
-// func shutDown() {
-// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-// 	defer cancel()
-// 	err = eh.Shutdown(ctx)
-// 	assert.NoError(t, err)
-// }
-
 func TestITGetAll(t *testing.T) {
 	// Setup server
 	e := echo.New()
 	go func() {
-		setUpDB(e)
+		setUpServer(e)
 	}()
 	setUpTimeOut()
 
@@ -136,36 +128,48 @@ func TestITGetAll(t *testing.T) {
 	log.Println("Bye Bye")
 }
 
+var expBodyUpdate = Expense{
+	Title:  "apple smoothie",
+	Amount: 89.00,
+	Note:   "no discount",
+	Tags:   []string{"beverage"},
+}
+
+var expBodyCreate = Expense{
+	Title:  "strawberry smoothie",
+	Amount: 79.00,
+	Note:   "night market promotion discount 10 bath",
+	Tags:   []string{"food", "beverage"},
+}
+
+func encodExpense(body Expense) *bytes.Buffer {
+	payload, _ := json.Marshal(body)
+	return bytes.NewBuffer(payload)
+}
 func TestITUpdate(t *testing.T) {
 	// Setup server
 	e := echo.New()
 	go func() {
-		setUpDB(e)
+		setUpServer(e)
 	}()
 	setUpTimeOut()
 
 	// Arrange
 	exp := seedExpense(t)
 
-	reqBody := Expense{
-		Title:  "apple smoothie",
-		Amount: 89.00,
-		Note:   "no discount",
-		Tags:   []string{"beverage"},
-	}
-	payload, _ := json.Marshal(reqBody)
+	body := encodExpense(expBodyUpdate)
 	var expense Expense
-	res := request(http.MethodPut, uri("expenses", strconv.Itoa(exp.Id)), bytes.NewBuffer(payload))
-	err := res.Decode(&expense)
 	expense.Id = exp.Id
+	res := request(http.MethodPut, uri("expenses", strconv.Itoa(exp.Id)), body)
+	err := res.Decode(&expense)
 
 	// Assertions
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
-	assert.Equal(t, reqBody.Title, expense.Title)
-	assert.Equal(t, reqBody.Amount, expense.Amount)
-	assert.Equal(t, reqBody.Note, expense.Note)
-	assert.Equal(t, reqBody.Tags, expense.Tags)
+	assert.Equal(t, expBodyUpdate.Title, expense.Title)
+	assert.Equal(t, expBodyUpdate.Amount, expense.Amount)
+	assert.Equal(t, expBodyUpdate.Note, expense.Note)
+	assert.Equal(t, expBodyUpdate.Tags, expense.Tags)
 
 	// shutdown
 	if err := e.Shutdown(context.Background()); err != nil {
@@ -177,17 +181,12 @@ func TestITCreate(t *testing.T) {
 	// Setup server
 	e := echo.New()
 	go func() {
-		setUpDB(e)
+		setUpServer(e)
 	}()
 	setUpTimeOut()
 
-	body := bytes.NewBufferString(`{
-		"title": "strawberry smoothie",
-		"amount": 79.00,
-		"note": "night market promotion discount 10 bath",
-		"tags": ["food","beverage"]
-		}`)
-
+	// Arrange
+	body := encodExpense(expBodyCreate)
 	var expense Expense
 	res := request(http.MethodPost, uri("expenses"), body)
 	err := res.Decode(&expense)
@@ -196,10 +195,10 @@ func TestITCreate(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, res.StatusCode)
 	assert.NotEqual(t, 0, expense.Id)
-	assert.Equal(t, "strawberry smoothie", expense.Title)
-	assert.Equal(t, 79.00, expense.Amount)
-	assert.Equal(t, "night market promotion discount 10 bath", expense.Note)
-	assert.Equal(t, []string{"food", "beverage"}, expense.Tags)
+	assert.Equal(t, expBodyCreate.Title, expense.Title)
+	assert.Equal(t, expBodyCreate.Amount, expense.Amount)
+	assert.Equal(t, expBodyCreate.Note, expense.Note)
+	assert.Equal(t, expBodyCreate.Tags, expense.Tags)
 
 	// shutdown
 	if err := e.Shutdown(context.Background()); err != nil {
@@ -212,7 +211,7 @@ func TestITGetById(t *testing.T) {
 	// Setup server
 	e := echo.New()
 	go func() {
-		setUpDB(e)
+		setUpServer(e)
 	}()
 	setUpTimeOut()
 
@@ -243,7 +242,7 @@ func TestHome(t *testing.T) {
 	// Setup server
 	e := echo.New()
 	go func() {
-		setUpDB(e)
+		setUpServer(e)
 	}()
 	setUpTimeOut()
 
