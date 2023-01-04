@@ -22,19 +22,19 @@
   * DATABASE_URL="postgres://vpovznnb:ayqqQAENpjSG6STGdF5CMxXGni5DAhj0@tiny.db.elephantsql.com/vpovznnb" go run server.go
   * AUTH_TOKEN="_____" go test --tags=integration -v ./...   
   
-* Multi-Stage build ( use below 3 command )
+* Multi-Stage build ( use the 3 commands below here)
   * docker build -t devops:assessment .
   * docker run devops:assessment 
   * docker images devops:assessment 
 
-* Docker-compose testing sandbox ( use below 2 command )
+* Docker-compose testing sandbox ( use the 2 commands below here)
   * docker-compose -f docker-compose.test.yml down    
   * docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from it_tests
   * 
 * Postman
   * run  DATABASE_URL="postgres://vpovznnb:ayqqQAENpjSG6STGdF5CMxXGni5DAhj0@tiny.db.elephantsql.com/vpovznnb" go run server.go
   * use expenses.postman_collection_env.json for run test
-
+![result](postman.png)
 
 
 
