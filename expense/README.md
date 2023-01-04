@@ -35,10 +35,10 @@
   * run  DATABASE_URL="postgres://vpovznnb:ayqqQAENpjSG6STGdF5CMxXGni5DAhj0@tiny.db.elephantsql.com/vpovznnb" go run server.go
   * use expenses.postman_collection_env.json for run test
 ![result](image/postman.png)
-### Problem
-    First time I separate braches to create each story. When it succeeds I merge it into main branch.
-    I do this process for every story until complete evey story and main branch finally work. 
-    So I imporove everything in main branch.
-    But at the end, I realized that I should better improve the code in each branch not the main branch.
+### Review my code
+    First time I separate branches to create each story. When it succeeds I merge it into main branch.
+    I do this process for every story until complete and main branch finally works. 
+    So I imporove everything in the main branch.
+    But after I finished and review my code, I realized that I should better improve the code in each branch not the main branch.
 
   ![result](image/git-log-graph.png)
