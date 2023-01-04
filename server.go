@@ -15,8 +15,9 @@ import (
 	"github.com/nattha-wim/assessment/expense"
 )
 
-func main() {
-	//var db *sql.DB
+func setUpServer(e *echo.Echo) {
+	serverPort := ":2565"
+
 	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatal("Connect to database error", err)
@@ -25,10 +26,8 @@ func main() {
 	handler := expense.NewApplication(db)
 	handler.InitDB()
 
-	e := echo.New()
-
 	e.Use(middleware.Logger())
-	e.Use(middleware.Recover()) // เผื่อ server เรา down
+	e.Use(middleware.Recover())
 	e.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
 		if username == "admin" && password == "45678" {
 			return true, nil
@@ -42,12 +41,15 @@ func main() {
 	e.GET("/expenses", handler.GetAllExpenses)
 	e.PUT("/expenses/:id", handler.UpdateExpenses)
 
-	serverPort := ":2565"
+	log.Println("server starting at " + serverPort)
+	if err := e.Start(serverPort); err != nil && err != http.ErrServerClosed {
+		e.Logger.Fatal("shutting down the server")
+	}
+}
+func main() {
+	e := echo.New()
 	go func() {
-		log.Println("server starting at " + serverPort)
-		if err := e.Start(serverPort); err != nil && err != http.ErrServerClosed {
-			e.Logger.Fatal("shutting down the server")
-		}
+		setUpServer(e)
 	}()
 
 	stop := make(chan os.Signal, 1)

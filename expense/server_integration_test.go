@@ -15,8 +15,10 @@ import (
 	"net"
 	"net/http"
 	"os"
+
 	"strconv"
 	"strings"
+
 	"testing"
 	"time"
 
@@ -72,21 +74,23 @@ func seedExpense(t *testing.T) Expense {
 	return expense
 }
 
-func TestITGetAll(t *testing.T) {
+func setUpDB(e *echo.Echo) {
+	db, err := sql.Open("postgres", "postgres://vpovznnb:ayqqQAENpjSG6STGdF5CMxXGni5DAhj0@tiny.db.elephantsql.com/vpovznnb")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	// Setup server
-	eh := echo.New()
-	go func(e *echo.Echo) {
-		db, err := sql.Open("postgres", "postgres://vpovznnb:ayqqQAENpjSG6STGdF5CMxXGni5DAhj0@tiny.db.elephantsql.com/vpovznnb")
-		if err != nil {
-			log.Fatal(err)
-		}
+	h := NewApplication(db)
+	e.GET("/", h.HomeExpenses)
+	e.GET("/expenses", h.GetAllExpenses)
+	e.POST("/expenses", h.CreateExpense)
+	e.PUT("/expenses/:id", h.UpdateExpenses)
+	e.GET("/expenses/:id", h.GetExpenseById)
 
-		h := NewApplication(db)
+	e.Start(fmt.Sprintf(":%d", serverPort))
+}
 
-		e.GET("/expenses", h.GetAllExpenses)
-		e.Start(fmt.Sprintf(":%d", serverPort))
-	}(eh)
+func setUpTimeOut() {
 	for {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 70*time.Second)
 		if err != nil {
@@ -97,48 +101,50 @@ func TestITGetAll(t *testing.T) {
 			break
 		}
 	}
+}
+
+// func shutDown() {
+// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+// 	defer cancel()
+// 	err = eh.Shutdown(ctx)
+// 	assert.NoError(t, err)
+// }
+
+func TestITGetAll(t *testing.T) {
+	// Setup server
+	e := echo.New()
+	go func() {
+		setUpDB(e)
+	}()
+	setUpTimeOut()
+
 	// Arrange
-	reqBody := ``
 	var expense []Expense
-	res := request(http.MethodGet, uri("expenses"), strings.NewReader(reqBody))
+	res := request(http.MethodGet, uri("expenses"), nil)
 	err := res.Decode(&expense)
 
+	// Assertions
 	if assert.NoError(t, err) {
 		assert.Equal(t, http.StatusOK, res.StatusCode)
 		assert.Greater(t, len(expense), 0)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err = eh.Shutdown(ctx)
-	assert.NoError(t, err)
+	// shutdown
+	if err := e.Shutdown(context.Background()); err != nil {
+		e.Logger.Fatal(err)
+	}
+	log.Println("Bye Bye")
 }
 
 func TestITUpdate(t *testing.T) {
 	// Setup server
-	eh := echo.New()
-	go func(e *echo.Echo) {
-		db, err := sql.Open("postgres", "postgres://vpovznnb:ayqqQAENpjSG6STGdF5CMxXGni5DAhj0@tiny.db.elephantsql.com/vpovznnb")
-		if err != nil {
-			log.Fatal(err)
-		}
+	e := echo.New()
+	go func() {
+		setUpDB(e)
+	}()
+	setUpTimeOut()
 
-		h := NewApplication(db)
-
-		e.POST("/expenses", h.CreateExpense)
-		e.PUT("/expenses/:id", h.UpdateExpenses)
-		e.Start(fmt.Sprintf(":%d", serverPort))
-	}(eh)
-	for {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 70*time.Second)
-		if err != nil {
-			log.Println(err)
-		}
-		if conn != nil {
-			conn.Close()
-			break
-		}
-	}
+	// Arrange
 	exp := seedExpense(t)
 
 	reqBody := Expense{
@@ -151,9 +157,9 @@ func TestITUpdate(t *testing.T) {
 	var expense Expense
 	res := request(http.MethodPut, uri("expenses", strconv.Itoa(exp.Id)), bytes.NewBuffer(payload))
 	err := res.Decode(&expense)
-	res.Body.Close()
 	expense.Id = exp.Id
-	log.Println("expense seed update : ", expense)
+
+	// Assertions
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 	assert.Equal(t, reqBody.Title, expense.Title)
@@ -161,35 +167,19 @@ func TestITUpdate(t *testing.T) {
 	assert.Equal(t, reqBody.Note, expense.Note)
 	assert.Equal(t, reqBody.Tags, expense.Tags)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err = eh.Shutdown(ctx)
-	assert.NoError(t, err)
+	// shutdown
+	if err := e.Shutdown(context.Background()); err != nil {
+		e.Logger.Fatal(err)
+	}
+	log.Println("Bye Bye")
 }
 func TestITCreate(t *testing.T) {
 	// Setup server
-	eh := echo.New()
-	go func(e *echo.Echo) {
-		db, err := sql.Open("postgres", "postgres://vpovznnb:ayqqQAENpjSG6STGdF5CMxXGni5DAhj0@tiny.db.elephantsql.com/vpovznnb")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		h := NewApplication(db)
-
-		e.POST("/expenses", h.CreateExpense)
-		e.Start(fmt.Sprintf(":%d", serverPort))
-	}(eh)
-	for {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 100*time.Second)
-		if err != nil {
-			log.Println(err)
-		}
-		if conn != nil {
-			conn.Close()
-			break
-		}
-	}
+	e := echo.New()
+	go func() {
+		setUpDB(e)
+	}()
+	setUpTimeOut()
 
 	body := bytes.NewBufferString(`{
 		"title": "strawberry smoothie",
@@ -202,6 +192,7 @@ func TestITCreate(t *testing.T) {
 	res := request(http.MethodPost, uri("expenses"), body)
 	err := res.Decode(&expense)
 
+	// Assertions
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusCreated, res.StatusCode)
 	assert.NotEqual(t, 0, expense.Id)
@@ -210,44 +201,29 @@ func TestITCreate(t *testing.T) {
 	assert.Equal(t, "night market promotion discount 10 bath", expense.Note)
 	assert.Equal(t, []string{"food", "beverage"}, expense.Tags)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err = eh.Shutdown(ctx)
-	assert.NoError(t, err)
+	// shutdown
+	if err := e.Shutdown(context.Background()); err != nil {
+		e.Logger.Fatal(err)
+	}
+	log.Println("Bye Bye")
 }
 
 func TestITGetById(t *testing.T) {
 	// Setup server
-	eh := echo.New()
-	go func(e *echo.Echo) {
-		db, err := sql.Open("postgres", "postgres://vpovznnb:ayqqQAENpjSG6STGdF5CMxXGni5DAhj0@tiny.db.elephantsql.com/vpovznnb")
-		if err != nil {
-			log.Fatal(err)
-		}
+	e := echo.New()
+	go func() {
+		setUpDB(e)
+	}()
+	setUpTimeOut()
 
-		h := NewApplication(db)
-
-		e.GET("/expenses/:id", h.GetExpenseById)
-		e.POST("/expenses", h.CreateExpense)
-		e.Start(fmt.Sprintf(":%d", serverPort))
-	}(eh)
-	for {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 70*time.Second)
-		if err != nil {
-			log.Println(err)
-		}
-		if conn != nil {
-			conn.Close()
-			break
-		}
-	}
-
+	// Arrange
 	expense := seedExpense(t)
 
 	var latest Expense
 	res := request(http.MethodGet, uri("expenses", strconv.Itoa(expense.Id)), nil)
 	err := res.Decode(&latest)
 
+	// Assertions
 	assert.Nil(t, err)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 	assert.Equal(t, expense.Id, latest.Id)
@@ -256,120 +232,30 @@ func TestITGetById(t *testing.T) {
 	assert.NotEmpty(t, latest.Note)
 	assert.NotEmpty(t, latest.Tags)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err = eh.Shutdown(ctx)
-	assert.NoError(t, err)
+	// shutdown
+	if err := e.Shutdown(context.Background()); err != nil {
+		e.Logger.Fatal(err)
+	}
+	log.Println("Bye Bye")
 }
 
 func TestHome(t *testing.T) {
-	eh := echo.New()
-	go func(e *echo.Echo) {
+	// Setup server
+	e := echo.New()
+	go func() {
+		setUpDB(e)
+	}()
+	setUpTimeOut()
 
-		h := NewApplication(nil)
-
-		e.GET("/", h.HomeExpenses)
-		e.Start(fmt.Sprintf(":%d", serverPort))
-	}(eh)
-	for {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", serverPort), 30*time.Second)
-		if err != nil {
-			log.Println(err)
-		}
-		if conn != nil {
-			conn.Close()
-			break
-		}
-	}
-
+	// Arrange
 	res := request(http.MethodGet, uri(), nil)
 
+	// Assertions
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	eh.Shutdown(ctx)
-
+	// shutdown
+	if err := e.Shutdown(context.Background()); err != nil {
+		e.Logger.Fatal(err)
+	}
+	log.Println("Bye Bye")
 }
-
-// func TestHomeExpenses(t *testing.T) {
-// 	res := request(http.MethodGet, uri(), nil)
-// 	assert.Equal(t, http.StatusOK, res.StatusCode)
-// }
-
-// func TestGetAllExpenses(t *testing.T) {
-
-// 	seedExpense(t)
-
-// 	var expense []Expense
-// 	res := request(http.MethodGet, uri("expenses"), nil)
-// 	err := res.Decode(&expense)
-
-// 	assert.Nil(t, err)
-// 	assert.Equal(t, http.StatusOK, res.StatusCode)
-// 	assert.Greater(t, len(expense), 0)
-// }
-
-// func TestGetExpenseById(t *testing.T) {
-
-// 	exp := seedExpense(t)
-
-// 	var latest Expense
-// 	res := request(http.MethodGet, uri("expenses", strconv.Itoa(exp.Id)), nil)
-// 	err := res.Decode(&latest)
-
-// 	assert.Nil(t, err)
-// 	assert.Equal(t, http.StatusOK, res.StatusCode)
-// 	assert.Equal(t, exp.Id, latest.Id)
-// 	assert.NotEmpty(t, latest.Title)
-// 	assert.NotEmpty(t, latest.Amount)
-// 	assert.NotEmpty(t, latest.Note)
-// 	assert.NotEmpty(t, latest.Tags)
-
-// }
-
-// func TestUpdateExpense(t *testing.T) {
-// 	exp := seedExpense(t)
-// 	expense := Expense{
-// 		Title:  "apple smoothie",
-// 		Amount: 89.00,
-// 		Note:   "no discount",
-// 		Tags:   []string{"beverage"},
-// 	}
-// 	payload, _ := json.Marshal(expense)
-
-// 	var latest Expense
-// 	res := request(http.MethodPut, uri("expenses", strconv.Itoa(exp.Id)), bytes.NewBuffer(payload))
-// 	//defer res.Body.Close()
-// 	err := res.Decode(&latest)
-// 	latest.Id = exp.Id
-
-// 	assert.Nil(t, err)
-// 	assert.Equal(t, http.StatusOK, res.StatusCode)
-// 	assert.Equal(t, expense.Title, latest.Title)
-// 	assert.Equal(t, expense.Amount, latest.Amount)
-// 	assert.Equal(t, expense.Note, latest.Note)
-// 	assert.Equal(t, expense.Tags, latest.Tags)
-
-// }
-
-// func TestCreateExpense(t *testing.T) {
-// 	body := bytes.NewBufferString(`{
-// 		"title": "strawberry smoothie",
-// 		"amount": 79.00,
-// 		"note": "night market promotion discount 10 bath",
-// 		"tags": ["food","beverage"]
-// 		}`)
-
-// 	var expense Expense
-// 	res := request(http.MethodPost, uri("expenses"), body)
-// 	err := res.Decode(&expense)
-
-// 	assert.Nil(t, err)
-// 	assert.Equal(t, http.StatusCreated, res.StatusCode)
-// 	assert.NotEqual(t, 0, expense.Id)
-// 	assert.Equal(t, "strawberry smoothie", expense.Title)
-// 	assert.Equal(t, 79.00, expense.Amount)
-// 	assert.Equal(t, "night market promotion discount 10 bath", expense.Note)
-// 	assert.Equal(t, []string{"food", "beverage"}, expense.Tags)
-// }
